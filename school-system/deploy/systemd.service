@@ -1,0 +1,81 @@
+# School Management System — Systemd Service
+# Place at: /etc/systemd/system/school-system-api.service
+
+[Unit]
+Description=School Management System API Server
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=school_system
+Group=school_system
+WorkingDirectory=/opt/school_system/backend
+EnvironmentFile=/opt/school_system/.env
+ExecStart=/opt/school_system/backend/.venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 4 \
+    --proxy-headers \
+    --forwarded-allow-ips='*' \
+    --log-level info
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/school_system
+ReadOnlyPaths=/etc/ssl/certs
+
+# Resource limits
+LimitNOFILE=65535
+MemoryLimit=2G
+
+[Install]
+WantedBy=multi-user.target
+
+# ── Celery Worker ────────────────────────────────────────────────
+# Place at: /etc/systemd/system/school-system-celery.service
+
+# [Unit]
+# Description=School Management System Celery Worker
+# After=network.target redis.service
+#
+# [Service]
+# Type=simple
+# User=school_system
+# Group=school_system
+# WorkingDirectory=/opt/school_system/backend
+# EnvironmentFile=/opt/school_system/.env
+# ExecStart=/opt/school_system/backend/.venv/bin/celery -A app.tasks.celery_app worker \
+#     --loglevel=info --concurrency=4
+# Restart=always
+# RestartSec=5
+#
+# [Install]
+# WantedBy=multi-user.target
+
+# ── Celery Beat (scheduler) ──────────────────────────────────────
+# Place at: /etc/systemd/system/school-system-celery-beat.service
+
+# [Unit]
+# Description=School Management System Celery Beat Scheduler
+# After=network.target redis.service
+#
+# [Service]
+# Type=simple
+# User=school_system
+# Group=school_system
+# WorkingDirectory=/opt/school_system/backend
+# EnvironmentFile=/opt/school_system/.env
+# ExecStart=/opt/school_system/backend/.venv/bin/celery -A app.tasks.celery_app beat \
+#     --loglevel=info
+# Restart=always
+# RestartSec=5
+#
+# [Install]
+# WantedBy=multi-user.target
